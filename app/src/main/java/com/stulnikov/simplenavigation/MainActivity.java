@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -51,40 +52,7 @@ public class MainActivity extends ActionBarActivity implements
         setContentView(R.layout.ac_main);
 
         mLocationClient = new LocationClient(this, this, this);
-
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        if (mapFragment != null) {
-            Log.d(TAG, "Map fragment in not null");
-            mMap = mapFragment.getMap();
-            LatLng minsk = new LatLng(53.54, 27.34);
-
-            mMap.setMyLocationEnabled(true);
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(minsk, 13));
-
-            mMap.addMarker(new MarkerOptions()
-                    .title("Minsk")
-                    .snippet("The most populous city in Belarus.")
-                    .position(minsk));
-
-            mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
-                @Override
-                public void onMapLongClick(LatLng latLng) {
-                    mMap.addMarker(new MarkerOptions()
-                            .title("Point")
-                            .snippet("Destination")
-                            .position(latLng));
-                }
-            });
-
-            mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
-                @Override
-                public boolean onMyLocationButtonClick() {
-                    animateCamera(mCurrentLocation);
-                    return true;
-                }
-            });
-        }
+        tryInitMap();
         setUpLocationRequest();
     }
 
@@ -185,6 +153,58 @@ public class MainActivity extends ActionBarActivity implements
     private void animateCamera(Location location) {
         LatLng myLatLng = new LatLng(location.getLatitude(), location.getLongitude());
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, mMap.getCameraPosition().zoom));
+    }
+
+    private void tryInitMap() {
+        final SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        if (mapFragment != null) {
+            Log.d(TAG, "Map fragment in not null");
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+
+                @Override
+                public void run() {
+                    Log.d(TAG, "Attempt to get Map");
+                    mMap = mapFragment.getMap();
+                    if (mMap != null) {
+                        setUpMapFragment();
+                        handler.removeCallbacksAndMessages(null);
+                    } else {
+                        handler.postDelayed(this, 500);
+                    }
+                }
+            }, 0);
+        }
+    }
+
+    private void setUpMapFragment() {
+
+        LatLng minsk = new LatLng(53.54, 27.34);
+        mMap.setMyLocationEnabled(true);
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(minsk, 13));
+        mMap.addMarker(new MarkerOptions()
+                .title("Minsk")
+                .snippet("The most populous city in Belarus.")
+                .position(minsk));
+
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+                mMap.addMarker(new MarkerOptions()
+                        .title("Point")
+                        .snippet("Destination")
+                        .position(latLng));
+            }
+        });
+
+        mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+            @Override
+            public boolean onMyLocationButtonClick() {
+                animateCamera(mCurrentLocation);
+                return true;
+            }
+        });
     }
 
     private void setUpLocationRequest() {
