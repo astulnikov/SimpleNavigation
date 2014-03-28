@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
@@ -24,7 +25,10 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 
 public class MainActivity extends ActionBarActivity implements
@@ -42,7 +46,11 @@ public class MainActivity extends ActionBarActivity implements
 
     private LocationClient mLocationClient;
     private GoogleMap mMap;
+
     private Location mCurrentLocation;
+    private Marker mFromMarker;
+    private Marker mToMarker;
+    private Polyline mTrackLine;
 
     private LocationRequest mLocationRequest;
 
@@ -144,8 +152,15 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
+        switch (id){
+            case R.id.action_settings:
+                return true;
+            case R.id.action_add_from:
+
+                break;
+            case R.id.action_add_to:
+
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -191,10 +206,7 @@ public class MainActivity extends ActionBarActivity implements
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
-                mMap.addMarker(new MarkerOptions()
-                        .title("Point")
-                        .snippet("Destination")
-                        .position(latLng));
+                showToMarker(latLng);
             }
         });
 
@@ -205,6 +217,30 @@ public class MainActivity extends ActionBarActivity implements
                 return true;
             }
         });
+    }
+
+    private void showToMarker(LatLng latLng) {
+        if (mToMarker != null && mToMarker.isVisible()) {
+            mToMarker.remove();
+        }
+        float[] distanceArr = new float[5];
+        Location.distanceBetween(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude(),
+                latLng.latitude, latLng.longitude, distanceArr);
+        int distance = (int) distanceArr[0];
+        mToMarker = mMap.addMarker(new MarkerOptions()
+                .title("Point")
+                .snippet(getString(R.string.destination, distance))
+                .position(latLng));
+        mToMarker.showInfoWindow();
+
+        LatLng currentLatLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        if (mTrackLine != null && mTrackLine.isVisible()) {
+            mTrackLine.remove();
+        }
+        mTrackLine = mMap.addPolyline(new PolylineOptions().geodesic(true)
+                .add(currentLatLng)
+                .add(latLng)
+                .color(Color.RED));
     }
 
     private void setUpLocationRequest() {

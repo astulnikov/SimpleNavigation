@@ -2,7 +2,19 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.stulnikov.simplenavigation.MainActivity" >
-    
+
+    <item android:id="@+id/action_add_from"
+        android:title="@string/from_point"
+        android:icon="@android:drawable/ic_media_pause"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+
+    <item android:id="@+id/action_add_to"
+        android:title="@string/to_point"
+        android:icon="@android:drawable/ic_media_next"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"
         android:orderInCategory="100"
