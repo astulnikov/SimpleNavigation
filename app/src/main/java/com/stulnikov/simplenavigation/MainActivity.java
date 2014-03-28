@@ -1,7 +1,9 @@
 package com.stulnikov.simplenavigation;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.graphics.Color;
@@ -10,9 +12,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.ActionBarActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -51,6 +58,8 @@ public class MainActivity extends ActionBarActivity implements
     private Marker mFromMarker;
     private Marker mToMarker;
     private Polyline mTrackLine;
+
+    private PointType currentPoint = PointType.TO;
 
     private LocationRequest mLocationRequest;
 
@@ -152,14 +161,16 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        switch (id){
+        switch (id) {
             case R.id.action_settings:
                 return true;
             case R.id.action_add_from:
-
+                currentPoint = PointType.FROM;
+                showPickDialog();
                 break;
             case R.id.action_add_to:
-
+                currentPoint = PointType.TO;
+                showPickDialog();
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -195,18 +206,12 @@ public class MainActivity extends ActionBarActivity implements
 
     private void setUpMapFragment() {
 
-        LatLng minsk = new LatLng(53.54, 27.34);
         mMap.setMyLocationEnabled(true);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(minsk, 13));
-        mMap.addMarker(new MarkerOptions()
-                .title("Minsk")
-                .snippet("The most populous city in Belarus.")
-                .position(minsk));
 
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
-                showToMarker(latLng);
+                pickLocation(latLng);
             }
         });
 
@@ -219,26 +224,52 @@ public class MainActivity extends ActionBarActivity implements
         });
     }
 
+    private void showFromMarker(LatLng latLng) {
+        Log.d(TAG, "showFromMarker: " + latLng.toString());
+        LatLng toLatLng;
+        if (mToMarker != null) {
+            toLatLng = new LatLng(mToMarker.getPosition().latitude, mToMarker.getPosition().longitude);
+        } else {
+            toLatLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        }
+        if (mFromMarker != null && mFromMarker.isVisible()) {
+            mFromMarker.remove();
+        }
+        mFromMarker = mMap.addMarker(new MarkerOptions()
+                .title("From Point")
+                .snippet(toLatLng.toString())
+                .position(latLng));
+        mFromMarker.showInfoWindow();
+
+       showToMarker(toLatLng);
+    }
+
     private void showToMarker(LatLng latLng) {
+        Log.d(TAG, "showToMarker: " + latLng.toString());
+        LatLng fromLatLng;
+        if (mFromMarker != null) {
+            fromLatLng = new LatLng(mFromMarker.getPosition().latitude, mFromMarker.getPosition().longitude);
+        } else {
+            fromLatLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        }
         if (mToMarker != null && mToMarker.isVisible()) {
             mToMarker.remove();
         }
         float[] distanceArr = new float[5];
-        Location.distanceBetween(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude(),
+        Location.distanceBetween(fromLatLng.latitude, fromLatLng.longitude,
                 latLng.latitude, latLng.longitude, distanceArr);
         int distance = (int) distanceArr[0];
         mToMarker = mMap.addMarker(new MarkerOptions()
                 .title("Point")
-                .snippet(getString(R.string.destination, distance))
+                .snippet(getString(R.string.destination, distance, distanceArr[1]))
                 .position(latLng));
         mToMarker.showInfoWindow();
 
-        LatLng currentLatLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
         if (mTrackLine != null && mTrackLine.isVisible()) {
             mTrackLine.remove();
         }
         mTrackLine = mMap.addPolyline(new PolylineOptions().geodesic(true)
-                .add(currentLatLng)
+                .add(fromLatLng)
                 .add(latLng)
                 .color(Color.RED));
     }
@@ -264,6 +295,66 @@ public class MainActivity extends ActionBarActivity implements
         }
     }
 
+    private void showPickDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.fr_pick_dialog, null);
+        final EditText latitude = (EditText) dialogView.findViewById(R.id.latitude_edit);
+        final EditText longitude = (EditText) dialogView.findViewById(R.id.longitude_edit);
+        final CheckBox pickMapCheckBox = (CheckBox) dialogView.findViewById(R.id.pick_from_map_checkbox);
+        final CheckBox pickMyCheckBox = (CheckBox) dialogView.findViewById(R.id.use_my_checkbox);
+        pickMapCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    pickMyCheckBox.setChecked(false);
+                }
+                latitude.setEnabled(!isChecked);
+                longitude.setEnabled(!isChecked);
+            }
+        });
+        pickMyCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    pickMapCheckBox.setChecked(false);
+                }
+                latitude.setEnabled(!isChecked);
+                longitude.setEnabled(!isChecked);
+            }
+        });
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(dialogView);
+        builder.setTitle(R.string.pick_location);
+        builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (!pickMapCheckBox.isChecked() && !pickMyCheckBox.isChecked()) {
+                    if (!TextUtils.isEmpty(latitude.getText()) && !TextUtils.isEmpty(longitude.getText())) {
+                        LatLng latLng = new LatLng(Double.valueOf(latitude.getText().toString()), Double.valueOf(longitude.getText().toString()));
+                        pickLocation(latLng);
+                    }
+                } else if (pickMyCheckBox.isChecked()) {
+                    LatLng latLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+                    pickLocation(latLng);
+                } else if (pickMapCheckBox.isChecked()) {
+                    //TODO set action item activated and wait till user picks point
+                }
+            }
+        });
+        builder.create().show();
+    }
+
+    private void pickLocation(LatLng latLng) {
+        switch (currentPoint) {
+            case FROM:
+                showFromMarker(latLng);
+                break;
+            case TO:
+                showToMarker(latLng);
+                break;
+        }
+    }
+
     public static class ErrorDialogFragment extends DialogFragment {
         private Dialog mDialog;
 
@@ -280,5 +371,9 @@ public class MainActivity extends ActionBarActivity implements
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             return mDialog;
         }
+    }
+
+    private enum PointType {
+        FROM, TO
     }
 }

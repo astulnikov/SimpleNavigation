@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+    <TextView
+        android:id="@+id/latitude_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/latitude"/>
+
+    <EditText
+        android:id="@+id/latitude_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/latitude_text"
+        android:layout_toRightOf="@+id/latitude_text"
+        android:layout_marginLeft="60dp"
+        android:inputType="numberDecimal"/>
+
+    <TextView
+        android:id="@+id/longitude_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/longitude"
+        android:layout_below="@id/latitude_edit"
+        android:layout_marginTop="16dp"/>
+
+    <EditText
+        android:id="@+id/longitude_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/longitude_text"
+        android:layout_alignLeft="@+id/latitude_edit"
+        android:inputType="numberDecimal"/>
+
+    <TextView
+        android:id="@+id/pick_from_map"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/pick_map"
+        android:layout_below="@+id/longitude_text"
+        android:layout_marginTop="24dp"/>
+
+    <CheckBox
+        android:id="@+id/pick_from_map_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/pick_from_map"
+        android:layout_alignLeft="@+id/longitude_edit" />
+
+    <TextView
+        android:id="@+id/use_my"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/use_my"
+        android:layout_below="@+id/pick_from_map"
+        android:layout_marginTop="16dp"/>
+
+    <CheckBox
+        android:id="@+id/use_my_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/use_my"
+        android:layout_alignLeft="@+id/pick_from_map_checkbox" />
+</RelativeLayout>
