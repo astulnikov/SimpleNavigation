@@ -236,7 +236,7 @@ public class MainActivity extends ActionBarActivity implements
             mFromMarker.remove();
         }
         mFromMarker = mMap.addMarker(new MarkerOptions()
-                .title("From Point")
+                .title(getString(R.string.from_point))
                 .snippet(toLatLng.toString())
                 .position(latLng));
         mFromMarker.showInfoWindow();
@@ -260,7 +260,7 @@ public class MainActivity extends ActionBarActivity implements
                 latLng.latitude, latLng.longitude, distanceArr);
         int distance = (int) distanceArr[0];
         mToMarker = mMap.addMarker(new MarkerOptions()
-                .title("Point")
+                .title(getString(R.string.to_point))
                 .snippet(getString(R.string.destination, distance, distanceArr[1]))
                 .position(latLng));
         mToMarker.showInfoWindow();
