@@ -122,7 +122,6 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public void onLocationChanged(Location location) {
         mCurrentLocation = location;
-        animateCamera(mCurrentLocation);
     }
 
     @Override
