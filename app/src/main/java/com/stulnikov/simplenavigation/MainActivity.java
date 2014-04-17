@@ -50,9 +50,13 @@ public class MainActivity extends ActionBarActivity implements
     private static final long UPDATE_INTERVAL = MILLISECONDS_PER_SECOND * UPDATE_INTERVAL_IN_SECONDS;
     private static final int FASTEST_INTERVAL_IN_SECONDS = 1;
     private static final long FASTEST_INTERVAL = MILLISECONDS_PER_SECOND * FASTEST_INTERVAL_IN_SECONDS;
+    private static final int FULL_CIRCLE_ANGLE = 360;
 
     private LocationClient mLocationClient;
     private GoogleMap mMap;
+
+    private MenuItem mFromItem;
+    private MenuItem mToItem;
 
     private Location mCurrentLocation;
     private Marker mFromMarker;
@@ -154,6 +158,8 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.ac_main, menu);
+        mFromItem = menu.findItem(R.id.action_add_from);
+        mToItem = menu.findItem(R.id.action_add_to);
         return true;
     }
 
@@ -161,14 +167,16 @@ public class MainActivity extends ActionBarActivity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         switch (id) {
-            case R.id.action_settings:
-                return true;
             case R.id.action_add_from:
                 currentPoint = PointType.FROM;
+                mToItem.setIcon(R.drawable.ic_action_directions);
+                mFromItem.setIcon(R.drawable.ic_action_place_selected);
                 showPickDialog();
                 break;
             case R.id.action_add_to:
                 currentPoint = PointType.TO;
+                mFromItem.setIcon(R.drawable.ic_action_place);
+                mToItem.setIcon(R.drawable.ic_action_directions_selected);
                 showPickDialog();
                 break;
         }
@@ -258,9 +266,13 @@ public class MainActivity extends ActionBarActivity implements
         Location.distanceBetween(fromLatLng.latitude, fromLatLng.longitude,
                 latLng.latitude, latLng.longitude, distanceArr);
         int distance = (int) distanceArr[0];
+        float bearing = distanceArr[1];
+        if(bearing < 0) {
+            bearing = FULL_CIRCLE_ANGLE + bearing;
+        }
         mToMarker = mMap.addMarker(new MarkerOptions()
                 .title(getString(R.string.to_point))
-                .snippet(getString(R.string.destination, distance, distanceArr[1]))
+                .snippet(getString(R.string.destination, distance, bearing))
                 .position(latLng));
         mToMarker.showInfoWindow();
 

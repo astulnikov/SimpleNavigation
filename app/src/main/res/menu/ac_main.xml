@@ -1,22 +1,19 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="com.stulnikov.simplenavigation.MainActivity" >
+    tools:context="com.stulnikov.simplenavigation.MainActivity">
 
-    <item android:id="@+id/action_add_from"
+    <item
+        android:id="@+id/action_add_from"
         android:title="@string/from_point"
         android:icon="@drawable/ic_action_place"
         android:orderInCategory="100"
         app:showAsAction="always" />
 
-    <item android:id="@+id/action_add_to"
+    <item
+        android:id="@+id/action_add_to"
         android:title="@string/to_point"
-        android:icon="@drawable/ic_action_directions"
+        android:icon="@drawable/ic_action_directions_selected"
         android:orderInCategory="100"
         app:showAsAction="always" />
-
-    <item android:id="@+id/action_settings"
-        android:title="@string/action_settings"
-        android:orderInCategory="100"
-        app:showAsAction="never" />
 </menu>
