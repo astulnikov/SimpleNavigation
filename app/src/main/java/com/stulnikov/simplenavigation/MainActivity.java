@@ -8,8 +8,10 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.graphics.Color;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.Settings;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.ActionBarActivity;
 import android.text.TextUtils;
@@ -46,6 +48,7 @@ public class MainActivity extends ActionBarActivity implements
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
+    private final static int LOCATION_SETTINGS_REQUEST = 9876;
     private static final int MILLISECONDS_PER_SECOND = 1000;
     public static final int UPDATE_INTERVAL_IN_SECONDS = 5;
     private static final long UPDATE_INTERVAL = MILLISECONDS_PER_SECOND * UPDATE_INTERVAL_IN_SECONDS;
@@ -73,14 +76,17 @@ public class MainActivity extends ActionBarActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.ac_main);
 
+        setUpLocationRequest();
         mLocationClient = new LocationClient(this, this, this);
         tryInitMap();
-        setUpLocationRequest();
+
+        checkLocationAccess();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        Log.d(TAG, "onStart");
         FlurryAgent.onStartSession(this, getString(R.string.flurry_api_key));
         if (servicesConnected()) {
             mLocationClient.connect();
@@ -128,12 +134,14 @@ public class MainActivity extends ActionBarActivity implements
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.d(TAG, "onLocationChanged");
         mCurrentLocation = location;
     }
 
     @Override
     protected void onActivityResult(
             int requestCode, int resultCode, Intent data) {
+        Log.d(TAG, "onActivityResult");
         switch (requestCode) {
             case CONNECTION_FAILURE_RESOLUTION_REQUEST:
                 switch (resultCode) {
@@ -141,6 +149,35 @@ public class MainActivity extends ActionBarActivity implements
                         mLocationClient.connect();
                         break;
                 }
+                break;
+            case LOCATION_SETTINGS_REQUEST:
+                checkLocationAccess();
+                break;
+        }
+    }
+
+    /**
+     * check if location providers were enabled
+     *
+     * @return true if any provider is enabled
+     */
+    private boolean checkLocationAccess() {
+        String locationProviders = null;
+        int locationMode = 0;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            locationProviders = Settings.Secure.getString(getContentResolver(), Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+        } else {
+            try {
+                locationMode = Settings.Secure.getInt(getContentResolver(), Settings.Secure.LOCATION_MODE);
+            } catch (Settings.SettingNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        if (TextUtils.isEmpty(locationProviders) && locationMode == Settings.Secure.LOCATION_MODE_OFF) {
+            showNoLocationDialog();
+            return false;
+        } else {
+            return true;
         }
     }
 
@@ -195,7 +232,7 @@ public class MainActivity extends ActionBarActivity implements
         final SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         if (mapFragment != null) {
-            Log.d(TAG, "Map fragment in not null");
+            Log.d(TAG, "Map fragment is not null");
             final Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
 
@@ -228,7 +265,13 @@ public class MainActivity extends ActionBarActivity implements
         mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
             @Override
             public boolean onMyLocationButtonClick() {
-                animateCamera(mCurrentLocation);
+                if (mCurrentLocation != null) {
+                    animateCamera(mCurrentLocation);
+                } else {
+                    if (checkLocationAccess()) {
+                        showLocationNotAvailableDialog();
+                    }
+                }
                 return true;
             }
         });
@@ -239,8 +282,10 @@ public class MainActivity extends ActionBarActivity implements
         LatLng toLatLng;
         if (mToMarker != null) {
             toLatLng = new LatLng(mToMarker.getPosition().latitude, mToMarker.getPosition().longitude);
-        } else {
+        } else if (mCurrentLocation != null) {
             toLatLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        } else {
+            toLatLng = new LatLng(0, 0);
         }
         if (mFromMarker != null && mFromMarker.isVisible()) {
             mFromMarker.remove();
@@ -251,7 +296,7 @@ public class MainActivity extends ActionBarActivity implements
                 .position(latLng));
         mFromMarker.showInfoWindow();
 
-       showToMarker(toLatLng);
+        showToMarker(toLatLng);
     }
 
     private void showToMarker(LatLng latLng) {
@@ -259,8 +304,10 @@ public class MainActivity extends ActionBarActivity implements
         LatLng fromLatLng;
         if (mFromMarker != null) {
             fromLatLng = new LatLng(mFromMarker.getPosition().latitude, mFromMarker.getPosition().longitude);
-        } else {
+        } else if (mCurrentLocation != null) {
             fromLatLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        } else {
+            fromLatLng = new LatLng(0, 0);
         }
         if (mToMarker != null && mToMarker.isVisible()) {
             mToMarker.remove();
@@ -270,7 +317,7 @@ public class MainActivity extends ActionBarActivity implements
                 latLng.latitude, latLng.longitude, distanceArr);
         int distance = (int) distanceArr[0];
         float bearing = distanceArr[1];
-        if(bearing < 0) {
+        if (bearing < 0) {
             bearing = FULL_CIRCLE_ANGLE + bearing;
         }
         mToMarker = mMap.addMarker(new MarkerOptions()
@@ -307,6 +354,39 @@ public class MainActivity extends ActionBarActivity implements
             errorFragment.setDialog(errorDialog);
             errorFragment.show(getSupportFragmentManager(), "Location Updates");
         }
+    }
+
+    private void showNoLocationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.no_location_title);
+        builder.setMessage(R.string.no_location_message);
+        builder.setPositiveButton(R.string.settings, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), LOCATION_SETTINGS_REQUEST);
+            }
+        });
+        builder.setNegativeButton(R.string.exit, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                finish();
+            }
+        });
+        builder.create().show();
+    }
+
+    private void showLocationNotAvailableDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.no_location_title);
+        builder.setMessage(R.string.location_not_ready_message);
+        builder.setPositiveButton(R.string.settings, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                startActivityForResult(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), LOCATION_SETTINGS_REQUEST);
+            }
+        });
+        builder.setNegativeButton(R.string.wait, null);
+        builder.create().show();
     }
 
     private void showPickDialog() {
@@ -348,10 +428,14 @@ public class MainActivity extends ActionBarActivity implements
                         pickLocation(latLng);
                     }
                 } else if (pickMyCheckBox.isChecked()) {
-                    LatLng latLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
-                    pickLocation(latLng);
-                } else if (pickMapCheckBox.isChecked()) {
-                    //TODO set action item activated and wait till user picks point
+                    if (mCurrentLocation != null) {
+                        LatLng latLng = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+                        pickLocation(latLng);
+                    } else {
+                        if (checkLocationAccess()) {
+                            showLocationNotAvailableDialog();
+                        }
+                    }
                 }
             }
         });

@@ -10,6 +10,12 @@
     <string name="pick_map">Pick from map:</string>
     <string name="use_my">Use my location:</string>
     <string name="destination">Distance: %1$d m. \nBearing: %2$.3f deg.</string>
+    <string name="no_location_title">Location is not available</string>
+    <string name="no_location_message">Please, check positioning settings</string>
+    <string name="location_not_ready_message">Please, wait while we trying to get your location or enable all positioning sources</string>
+    <string name="settings">Settings</string>
+    <string name="wait">Wait</string>
+    <string name="exit">Exit</string>
     <string name="flurry_api_key">59VCX37RD2HDWZYCS559</string>
 
 </resources>
