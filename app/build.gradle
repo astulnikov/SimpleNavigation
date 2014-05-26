@@ -5,10 +5,10 @@ android {
     buildToolsVersion "19.0.3"
 
     defaultConfig {
-        minSdkVersion 9
+        minSdkVersion 10
         targetSdkVersion 19
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "0.1.1"
     }
     final Console console = System.console();
     if (console != null) {
@@ -16,12 +16,10 @@ android {
         // Building from console
         signingConfigs {
             release {
-                release {
-                    storeFile file(System.console().readLine("\n\$ Enter keystore path: "))
-                    storePassword System.console().readLine("\n\$ Enter keystore password: ")
-                    keyAlias System.console().readLine("\n\$ Enter key alias: ")
-                    keyPassword System.console().readLine("\n\$ Enter key password: ")
-                }
+                storeFile file(System.console().readLine("\n\$ Enter keystore path: "))
+                storePassword System.console().readLine("\n\$ Enter keystore password: ")
+                keyAlias System.console().readLine("\n\$ Enter key alias: ")
+                keyPassword System.console().readLine("\n\$ Enter key password: ")
             }
         }
 

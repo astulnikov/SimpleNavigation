@@ -22,6 +22,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.flurry.android.FlurryAgent;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -80,6 +81,7 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     protected void onStart() {
         super.onStart();
+        FlurryAgent.onStartSession(this, getString(R.string.flurry_api_key));
         if (servicesConnected()) {
             mLocationClient.connect();
         }
@@ -91,6 +93,7 @@ public class MainActivity extends ActionBarActivity implements
             mLocationClient.removeLocationUpdates(this);
         }
         mLocationClient.disconnect();
+        FlurryAgent.onEndSession(this);
         super.onStop();
     }
 

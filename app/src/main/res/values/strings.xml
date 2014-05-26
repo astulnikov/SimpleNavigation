@@ -9,6 +9,7 @@
     <string name="pick_location">Pick Location</string>
     <string name="pick_map">Pick from map:</string>
     <string name="use_my">Use my location:</string>
-    <string name="destination">Destination: %1$d m. \nBearing: %2$.3f deg.</string>
+    <string name="destination">Distance: %1$d m. \nBearing: %2$.3f deg.</string>
+    <string name="flurry_api_key">59VCX37RD2HDWZYCS559</string>
 
 </resources>
