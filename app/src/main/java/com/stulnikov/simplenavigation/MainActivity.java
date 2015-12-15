@@ -1,24 +1,32 @@
 package com.stulnikov.simplenavigation;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -26,11 +34,11 @@ import android.widget.Toast;
 
 import com.flurry.android.FlurryAgent;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -41,9 +49,9 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 
-public class MainActivity extends ActionBarActivity implements
-        GooglePlayServicesClient.ConnectionCallbacks,
-        GooglePlayServicesClient.OnConnectionFailedListener,
+public class MainActivity extends AppCompatActivity implements
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -55,8 +63,9 @@ public class MainActivity extends ActionBarActivity implements
     private static final int FASTEST_INTERVAL_IN_SECONDS = 1;
     private static final long FASTEST_INTERVAL = MILLISECONDS_PER_SECOND * FASTEST_INTERVAL_IN_SECONDS;
     private static final int FULL_CIRCLE_ANGLE = 360;
+    private static final int REQUEST_CODE_ACCESS_FINE_LOCATION = 2;
 
-    private LocationClient mLocationClient;
+    private GoogleApiClient mLocationClient;
     private GoogleMap mMap;
 
     private MenuItem mFromItem;
@@ -77,9 +86,13 @@ public class MainActivity extends ActionBarActivity implements
         setContentView(R.layout.ac_main);
 
         setUpLocationRequest();
-        mLocationClient = new LocationClient(this, this, this);
+        mLocationClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
         tryInitMap();
-
+        initLayerButton();
         checkLocationAccess();
     }
 
@@ -96,7 +109,7 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     protected void onStop() {
         if (mLocationClient.isConnected()) {
-            mLocationClient.removeLocationUpdates(this);
+            mLocationClient.unregisterConnectionCallbacks(this);
         }
         mLocationClient.disconnect();
         FlurryAgent.onEndSession(this);
@@ -106,12 +119,18 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public void onConnected(Bundle bundle) {
         Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
-        mLocationClient.requestLocationUpdates(mLocationRequest, this);
-        mCurrentLocation = mLocationClient.getLastLocation();
+        mLocationRequest = LocationRequest.create();
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setInterval(1000); // Update location every second
+
+        if (checkPermission(false)) {
+            LocationServices.FusedLocationApi.requestLocationUpdates(
+                    mLocationClient, mLocationRequest, this);
+        }
     }
 
     @Override
-    public void onDisconnected() {
+    public void onConnectionSuspended(int i) {
         Toast.makeText(this, "Disconnected. Please re-connect.",
                 Toast.LENGTH_SHORT).show();
     }
@@ -223,9 +242,62 @@ public class MainActivity extends ActionBarActivity implements
         return super.onOptionsItemSelected(item);
     }
 
+    private void initLayerButton() {
+        FloatingActionButton floatingActionButton = (FloatingActionButton) findViewById(R.id.layer_options);
+        floatingActionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int currentMapType = mMap.getMapType();
+                if (currentMapType == GoogleMap.MAP_TYPE_NORMAL) {
+                    mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+                } else if (currentMapType == GoogleMap.MAP_TYPE_SATELLITE) {
+                    mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+                } else if (currentMapType == GoogleMap.MAP_TYPE_HYBRID) {
+                    mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                }
+            }
+        });
+    }
+
     private void animateCamera(Location location) {
         LatLng myLatLng = new LatLng(location.getLatitude(), location.getLongitude());
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myLatLng, mMap.getCameraPosition().zoom));
+    }
+
+    private boolean checkPermission(boolean silent) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        } else {
+            if (!silent) {
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    showPermissionRationale();
+                } else {
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                            REQUEST_CODE_ACCESS_FINE_LOCATION);
+                }
+            }
+            return false;
+        }
+    }
+
+    private void showPermissionRationale() {
+        Snackbar.make(findViewById(R.id.layer_button_coordinator), R.string.permission_required_title, Snackbar.LENGTH_LONG)
+                .setAction(R.string.settings, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        gotoAppSettings();
+                    }
+                })
+                .show();
+    }
+
+
+    private void gotoAppSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", getPackageName(), null));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 
     private void tryInitMap() {
@@ -241,6 +313,7 @@ public class MainActivity extends ActionBarActivity implements
                     Log.d(TAG, "Attempt to get Map");
                     mMap = mapFragment.getMap();
                     if (mMap != null) {
+                        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
                         setUpMapFragment();
                         handler.removeCallbacksAndMessages(null);
                     } else {
@@ -253,7 +326,7 @@ public class MainActivity extends ActionBarActivity implements
 
     private void setUpMapFragment() {
 
-        mMap.setMyLocationEnabled(true);
+        mMap.setMyLocationEnabled(checkPermission(true));
 
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
@@ -390,7 +463,7 @@ public class MainActivity extends ActionBarActivity implements
     }
 
     private void showPickDialog() {
-        View dialogView = getLayoutInflater().inflate(R.layout.fr_pick_dialog, null);
+        View dialogView = getLayoutInflater().inflate(R.layout.fr_pick_dialog, (ViewGroup) findViewById(R.id.root_view), false);
         final EditText latitude = (EditText) dialogView.findViewById(R.id.latitude_edit);
         final EditText longitude = (EditText) dialogView.findViewById(R.id.longitude_edit);
         final CheckBox pickMapCheckBox = (CheckBox) dialogView.findViewById(R.id.pick_from_map_checkbox);
@@ -439,6 +512,7 @@ public class MainActivity extends ActionBarActivity implements
                 }
             }
         });
+
         builder.create().show();
     }
 
