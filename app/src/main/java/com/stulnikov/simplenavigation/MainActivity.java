@@ -32,7 +32,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.flurry.android.FlurryAgent;
+import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -47,6 +47,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import io.fabric.sdk.android.Fabric;
 
 
 public class MainActivity extends AppCompatActivity implements
@@ -83,6 +84,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Fabric.with(this, new Crashlytics());
         setContentView(R.layout.ac_main);
 
         setUpLocationRequest();
@@ -100,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "onStart");
-        FlurryAgent.onStartSession(this, getString(R.string.flurry_api_key));
         if (servicesConnected()) {
             mLocationClient.connect();
         }
@@ -112,7 +113,6 @@ public class MainActivity extends AppCompatActivity implements
             mLocationClient.unregisterConnectionCallbacks(this);
         }
         mLocationClient.disconnect();
-        FlurryAgent.onEndSession(this);
         super.onStop();
     }
 
