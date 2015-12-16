@@ -4,11 +4,13 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
@@ -23,6 +25,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -30,9 +33,10 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -47,7 +51,6 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
-import io.fabric.sdk.android.Fabric;
 
 
 public class MainActivity extends AppCompatActivity implements
@@ -56,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements
         LocationListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String MAP_TYPE_TAG = "map_type";
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
     private final static int LOCATION_SETTINGS_REQUEST = 9876;
     private static final int MILLISECONDS_PER_SECOND = 1000;
@@ -68,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private GoogleApiClient mLocationClient;
     private GoogleMap mMap;
+    private int mCurrentMapType;
 
     private MenuItem mFromItem;
     private MenuItem mToItem;
@@ -84,8 +89,12 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Fabric.with(this, new Crashlytics());
         setContentView(R.layout.ac_main);
+        if (savedInstanceState != null) {
+            mCurrentMapType = savedInstanceState.getInt(MAP_TYPE_TAG);
+        } else {
+            mCurrentMapType = GoogleMap.MAP_TYPE_NORMAL;
+        }
 
         setUpLocationRequest();
         mLocationClient = new GoogleApiClient.Builder(this)
@@ -114,6 +123,12 @@ public class MainActivity extends AppCompatActivity implements
         }
         mLocationClient.disconnect();
         super.onStop();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(MAP_TYPE_TAG, mCurrentMapType);
     }
 
     @Override
@@ -247,14 +262,14 @@ public class MainActivity extends AppCompatActivity implements
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                int currentMapType = mMap.getMapType();
-                if (currentMapType == GoogleMap.MAP_TYPE_NORMAL) {
-                    mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-                } else if (currentMapType == GoogleMap.MAP_TYPE_SATELLITE) {
-                    mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-                } else if (currentMapType == GoogleMap.MAP_TYPE_HYBRID) {
-                    mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                if (mCurrentMapType == GoogleMap.MAP_TYPE_NORMAL) {
+                    mCurrentMapType = GoogleMap.MAP_TYPE_SATELLITE;
+                } else if (mCurrentMapType == GoogleMap.MAP_TYPE_SATELLITE) {
+                    mCurrentMapType = GoogleMap.MAP_TYPE_HYBRID;
+                } else if (mCurrentMapType == GoogleMap.MAP_TYPE_HYBRID) {
+                    mCurrentMapType = GoogleMap.MAP_TYPE_NORMAL;
                 }
+                mMap.setMapType(mCurrentMapType);
             }
         });
     }
@@ -313,7 +328,7 @@ public class MainActivity extends AppCompatActivity implements
                     Log.d(TAG, "Attempt to get Map");
                     mMap = mapFragment.getMap();
                     if (mMap != null) {
-                        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                        mMap.setMapType(mCurrentMapType);
                         setUpMapFragment();
                         handler.removeCallbacksAndMessages(null);
                     } else {
@@ -346,6 +361,38 @@ public class MainActivity extends AppCompatActivity implements
                     }
                 }
                 return true;
+            }
+        });
+
+        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+
+            @Override
+            public View getInfoWindow(Marker arg0) {
+                return null;
+            }
+
+            @Override
+            public View getInfoContents(Marker marker) {
+
+                Context context = MainActivity.this;
+
+                LinearLayout info = new LinearLayout(context);
+                info.setOrientation(LinearLayout.VERTICAL);
+
+                TextView title = new TextView(context);
+                title.setTextColor(Color.BLACK);
+                title.setGravity(Gravity.CENTER);
+                title.setTypeface(null, Typeface.BOLD);
+                title.setText(marker.getTitle());
+
+                TextView snippet = new TextView(context);
+                snippet.setTextColor(Color.GRAY);
+                snippet.setText(marker.getSnippet());
+
+                info.addView(title);
+                info.addView(snippet);
+
+                return info;
             }
         });
     }
